@@ -4,6 +4,7 @@ import pickle
 from pathlib import Path
 import pandas as pd
 import numpy as np
+from imblearn.pipeline import Pipeline as ImbPipeline
 
 from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
 from sklearn.pipeline import Pipeline
@@ -90,10 +91,10 @@ def train_and_evaluate(X_train, X_test, y_train, y_test):
     mlflow.set_experiment(MLFLOW_EXPERIMENT)
 
     for name, estimator in models.items():
-        pipe = Pipeline(steps=[('preprocessor', preprocessor), ('smote', SMOTE()), ('classifier', estimator)])
-        cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
-        grid = GridSearchCV(pipe, params[name], cv=cv, scoring='roc_auc', n_jobs=-1, verbose=1)
-        with mlflow.start_run(run_name=f"train_{name}"):
+        pipe = ImbPipeline(steps=[('preprocessor', preprocessor), ('smote', SMOTE()), ('classifier', estimator)])
+         cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+         grid = GridSearchCV(pipe, params[name], cv=cv, scoring='roc_auc', n_jobs=-1, verbose=1)
+         with mlflow.start_run(run_name=f"train_{name}"):
             grid.fit(X_train, y_train)
             best = grid.best_estimator_
             y_pred_proba = best.predict_proba(X_test)[:,1]
@@ -112,6 +113,10 @@ def train_and_evaluate(X_train, X_test, y_train, y_test):
             with open(fname, "wb") as f:
                 pickle.dump(best, f)
             mlflow.log_artifact(str(fname), artifact_path=f"models/{name}")
+         
+     
+
+        
 
     # choose best by auc
     best_name, best_val = max(best_models.items(), key=lambda x: x[1][1])
