@@ -71,6 +71,7 @@ def build_preprocessor(X):
 
 def train_and_evaluate(X_train, X_test, y_train, y_test):
     preprocessor = build_preprocessor(X_train)
+
     models = {
         "logistic": LogisticRegression(max_iter=200, class_weight='balanced'),
         "rf": RandomForestClassifier(random_state=42, n_jobs=-1),
@@ -80,39 +81,83 @@ def train_and_evaluate(X_train, X_test, y_train, y_test):
     }
 
     params = {
-        "logistic": {"classifier__C":[0.1,1,5]},
-        "rf": {"classifier__n_estimators":[100,200],"classifier__max_depth":[5,10,None]},
-        "xgb": {"classifier__n_estimators":[100,200],"classifier__max_depth":[3,6]},
-        "gb": {"classifier__n_estimators":[100,200],"classifier__max_depth":[3,6]},
-        "ada": {"classifier__n_estimators":[50,100]}
+        "logistic": {"classifier__C": [0.1, 1, 5]},
+        "rf": {"classifier__n_estimators": [100, 200],
+               "classifier__max_depth": [5, 10, None]},
+        "xgb": {"classifier__n_estimators": [100, 200],
+                "classifier__max_depth": [3, 6]},
+        "gb": {"classifier__n_estimators": [100, 200],
+               "classifier__max_depth": [3, 6]},
+        "ada": {"classifier__n_estimators": [50, 100]}
     }
 
     best_models = {}
     mlflow.set_experiment(MLFLOW_EXPERIMENT)
 
     for name, estimator in models.items():
-        pipe = ImbPipeline(steps=[('preprocessor', preprocessor), ('smote', SMOTE()), ('classifier', estimator)])
-         cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
-         grid = GridSearchCV(pipe, params[name], cv=cv, scoring='roc_auc', n_jobs=-1, verbose=1)
-         with mlflow.start_run(run_name=f"train_{name}"):
+        pipe = ImbPipeline(
+            steps=[
+                ('preprocessor', preprocessor),
+                ('smote', SMOTE()),
+                ('classifier', estimator)
+            ]
+        )
+
+        cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+
+        grid = GridSearchCV(
+            pipe,
+            params[name],
+            cv=cv,
+            scoring='roc_auc',
+            n_jobs=-1,
+            verbose=1,
+            error_score='raise'
+        )
+
+        with mlflow.start_run(run_name=f"train_{name}"):
             grid.fit(X_train, y_train)
+
             best = grid.best_estimator_
-            y_pred_proba = best.predict_proba(X_test)[:,1]
+            y_pred_proba = best.predict_proba(X_test)[:, 1]
             auc = roc_auc_score(y_test, y_pred_proba)
+
             mlflow.log_param("model_name", name)
-            mlflow.log_params({k:v for k,v in grid.best_params_.items()})
+            mlflow.log_params(grid.best_params_)
             mlflow.log_metric("roc_auc", float(auc))
-            # log classification report
-            clf_r = classification_report(y_test, best.predict(X_test), output_dict=True)
-            mlflow.log_metric("precision_1", clf_r.get('1', {}).get('precision', 0))
-            mlflow.log_metric("recall_1", clf_r.get('1', {}).get('recall', 0))
+
+            clf_r = classification_report(
+                y_test,
+                best.predict(X_test),
+                output_dict=True
+            )
+
+            mlflow.log_metric("precision_1", clf_r.get("1", {}).get("precision", 0))
+            mlflow.log_metric("recall_1", clf_r.get("1", {}).get("recall", 0))
+
             print(f"{name} AUC: {auc:.4f}")
-            best_models[name] = (best, auc)
-            # save artifact for this model
+
+            # Save model
             fname = MODEL_DIR / f"{name}_model.pkl"
             with open(fname, "wb") as f:
                 pickle.dump(best, f)
+
             mlflow.log_artifact(str(fname), artifact_path=f"models/{name}")
+
+            best_models[name] = (best, auc)
+
+    # Select best model
+    best_name, best_info = max(best_models.items(), key=lambda x: x[1][1])
+    best_model = best_info[0]
+
+    final_path = MODEL_DIR / "best_model.pkl"
+    with open(final_path, "wb") as f:
+        pickle.dump(best_model, f)
+
+    print(f"Best model: {best_name} with AUC {best_info[1]:.4f}")
+
+    return final_path
+
          
      
 
