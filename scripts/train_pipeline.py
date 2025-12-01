@@ -54,17 +54,19 @@ def build_preprocessor(X):
     cat_features = X.select_dtypes(include=['object']).columns.tolist()
     # remove potential ID-like columns
     for c in ['CustomerID']:
-        if c in num_features: 
+        if c in num_features:
             num_features.remove(c)
         if c in cat_features:
             cat_features.remove(c)
     num_transformer = Pipeline(steps=[('scaler', StandardScaler())])
-    cat_transformer = Pipeline(steps=[('ohe', OneHotEncoder(handle_unknown='ignore', sparse=False))])
+    # Use sparse_output for compatibility with scikit-learn >=1.2
+    cat_transformer = Pipeline(steps=[('ohe', OneHotEncoder(handle_unknown='ignore', sparse_output=False))])
     preprocessor = ColumnTransformer(transformers=[
         ('num', num_transformer, num_features),
         ('cat', cat_transformer, cat_features)
     ], remainder='drop', sparse_threshold=0)
     return preprocessor
+
 
 def train_and_evaluate(X_train, X_test, y_train, y_test):
     preprocessor = build_preprocessor(X_train)
