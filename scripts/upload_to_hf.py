@@ -10,7 +10,7 @@ MODEL_DIR = ROOT / "model"
 HF_TOKEN = os.getenv("HF_TOKEN", None)
 HF_USERNAME = os.getenv("HF_USERNAME", "your-hf-username")
 DATASET_REPO = f"{HF_USERNAME}/visitwithus-wellness-data"
-MODEL_REPO = f"{HF_USERNAME}/visitwithus-wellness-model"
+MODEL_REPO = f"{HF_USERNAME}/visitwithus-wellness-model-docker"
 
 api = HfApi(token=HF_TOKEN)
 
