@@ -8,7 +8,7 @@ DATA_DIR = ROOT / "data"
 MODEL_DIR = ROOT / "model"
 
 HF_TOKEN = os.getenv("HF_TOKEN", None)
-HF_USERNAME = os.getenv("HF_USERNAME", "your-hf-username")
+HF_USERNAME = os.getenv("HF_USERNAME", "RishiBond")
 DATASET_REPO = f"{HF_USERNAME}/visitwithus-wellness-data"
 MODEL_REPO = f"{HF_USERNAME}/visitwithus-wellness-model-docker"
 
