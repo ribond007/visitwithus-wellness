@@ -11,7 +11,7 @@ st.set_page_config(page_title="VisitWithUs — Wellness Prediction", layout="cen
 st.title("VisitWithUs — Wellness Package Purchase Prediction")
 st.write("Lightweight demo UI. If the model isn't available, you'll see an error message below.")
 
-HF_MODEL_REPO = os.getenv("HF_MODEL_REPO", "RishiBond/visitwithus-wellness-model")
+HF_MODEL_REPO = os.getenv("HF_MODEL_REPO", "RishiBond/visitwithus-wellness-model-docker")
 HF_TOKEN = os.getenv("HF_TOKEN", None)
 
 @st.cache_resource
