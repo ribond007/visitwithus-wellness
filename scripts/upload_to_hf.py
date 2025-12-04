@@ -1,4 +1,4 @@
-
+# scripts/upload_to_hf.py
 import os
 from pathlib import Path
 from huggingface_hub import HfApi, upload_file, create_repo
@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
 MODEL_DIR = ROOT / "model"
 
-HF_TOKEN = os.getenv("HF_TOKEN", "hf_xxx_REPLACE")
+HF_TOKEN = os.getenv("HF_TOKEN", None)
 HF_USERNAME = os.getenv("HF_USERNAME", "your-hf-username")
 DATASET_REPO = f"{HF_USERNAME}/visitwithus-wellness-data"
 MODEL_REPO = f"{HF_USERNAME}/visitwithus-wellness-model"
