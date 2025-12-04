@@ -4,7 +4,9 @@ import pickle
 from pathlib import Path
 import pandas as pd
 import numpy as np
+
 from imblearn.pipeline import Pipeline as ImbPipeline
+from imblearn.over_sampling import SMOTE
 
 from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
 from sklearn.pipeline import Pipeline
@@ -14,7 +16,6 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier,
 from sklearn.linear_model import LogisticRegression
 from xgboost import XGBClassifier
 from sklearn.metrics import roc_auc_score, classification_report
-from imblearn.over_sampling import SMOTE
 
 import mlflow
 import mlflow.sklearn
@@ -24,8 +25,6 @@ DATA_DIR = ROOT / "data"
 MODEL_DIR = ROOT / "model"
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
-# Config / placeholders (replace HF_USERNAME if you want to log)
-HF_USERNAME = os.getenv("HF_USERNAME", "your-hf-username")
 MLFLOW_EXPERIMENT = "visitwithus-wellness-experiment"
 
 def load_data():
@@ -68,7 +67,6 @@ def build_preprocessor(X):
     ], remainder='drop', sparse_threshold=0)
     return preprocessor
 
-
 def train_and_evaluate(X_train, X_test, y_train, y_test):
     preprocessor = build_preprocessor(X_train)
 
@@ -95,25 +93,15 @@ def train_and_evaluate(X_train, X_test, y_train, y_test):
     mlflow.set_experiment(MLFLOW_EXPERIMENT)
 
     for name, estimator in models.items():
-        pipe = ImbPipeline(
-            steps=[
-                ('preprocessor', preprocessor),
-                ('smote', SMOTE()),
-                ('classifier', estimator)
-            ]
-        )
+        pipe = ImbPipeline(steps=[
+            ('preprocessor', preprocessor),
+            ('smote', SMOTE()),
+            ('classifier', estimator)
+        ])
 
         cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
 
-        grid = GridSearchCV(
-            pipe,
-            params[name],
-            cv=cv,
-            scoring='roc_auc',
-            n_jobs=-1,
-            verbose=1,
-            error_score='raise'
-        )
+        grid = GridSearchCV(pipe, params[name], cv=cv, scoring='roc_auc', n_jobs=-1, verbose=1, error_score='raise')
 
         with mlflow.start_run(run_name=f"train_{name}"):
             grid.fit(X_train, y_train)
@@ -126,27 +114,22 @@ def train_and_evaluate(X_train, X_test, y_train, y_test):
             mlflow.log_params(grid.best_params_)
             mlflow.log_metric("roc_auc", float(auc))
 
-            clf_r = classification_report(
-                y_test,
-                best.predict(X_test),
-                output_dict=True
-            )
+            clf_r = classification_report(y_test, best.predict(X_test), output_dict=True)
 
             mlflow.log_metric("precision_1", clf_r.get("1", {}).get("precision", 0))
             mlflow.log_metric("recall_1", clf_r.get("1", {}).get("recall", 0))
 
             print(f"{name} AUC: {auc:.4f}")
 
-            # Save model
+            # Save model artifact for this candidate
             fname = MODEL_DIR / f"{name}_model.pkl"
             with open(fname, "wb") as f:
                 pickle.dump(best, f)
-
             mlflow.log_artifact(str(fname), artifact_path=f"models/{name}")
 
             best_models[name] = (best, auc)
 
-    # Select best model
+    # Select best model by AUC
     best_name, best_info = max(best_models.items(), key=lambda x: x[1][1])
     best_model = best_info[0]
 
@@ -156,21 +139,6 @@ def train_and_evaluate(X_train, X_test, y_train, y_test):
 
     print(f"Best model: {best_name} with AUC {best_info[1]:.4f}")
 
-    return final_path
-
-         
-     
-
-        
-
-    # choose best by auc
-    best_name, best_val = max(best_models.items(), key=lambda x: x[1][1])
-    best_model = best_models[best_name][0]
-    # persist final model
-    final_path = MODEL_DIR / "best_model.pkl"
-    with open(final_path, "wb") as f:
-        pickle.dump(best_model, f)
-    print(f"Best model: {best_name} with AUC {best_val:.4f}")
     return final_path
 
 if __name__ == "__main__":
