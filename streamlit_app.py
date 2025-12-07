@@ -19,7 +19,7 @@ def load_model_from_hf():
     """Download and load the best model from HF Model Hub."""
     try:
         local_file = hf_hub_download(
-            repo_id=HF_MODEL_REPO,
+            repo_id=MODEL_REPO,   # ✅ use MODEL_REPO here
             filename="best_model.pkl",
             repo_type="model",
         )
