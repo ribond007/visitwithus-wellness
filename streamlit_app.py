@@ -10,7 +10,7 @@ st.title("VisitWithUs — Wellness Package Purchase Prediction")
 st.write("Lightweight demo UI. If the model isn't available, you'll see an error message below.")
 
 # Hardcode working model repo (model is public)
-HF_MODEL_REPO = "RishiBond/visitwithus-wellness-model"
+MODEL_REPO = "RishiBond/visitwithus-wellness-model-docker"
 HF_DATASET_REPO = "RishiBond/visitwithus-wellness-data"
 
 
